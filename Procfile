@@ -1,0 +1,1 @@
+web: java -jar target/boond-timesheet-scanner-1.0.0.jar
