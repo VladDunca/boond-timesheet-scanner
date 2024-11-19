@@ -1,9 +1,11 @@
-package org.example.boond.service;
+package com.example.boond.service;
 
-import org.example.boond.model.ScanRequest;
+import com.example.boond.model.ScanRequest;
 import org.openqa.selenium.*;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import java.io.File;
 import java.nio.file.Files;
@@ -13,6 +15,7 @@ import java.time.Duration;
 @Service
 public class BoondScraperService {
 
+    private static final Logger logger = LoggerFactory.getLogger(BoondScraperService.class);
     private final WebDriver driver;
 
     public BoondScraperService(WebDriver driver) {
@@ -21,19 +24,28 @@ public class BoondScraperService {
 
     public File downloadTimesheet(ScanRequest request) throws Exception {
         try {
+            logger.info("Attempting to login...");
             login(request.getUsername(), request.getPassword());
+
+            logger.info("Navigating to timesheet...");
             navigateToTimesheet(request.getTimesheetId());
+
+            logger.info("Downloading document...");
             return downloadDocument(request.getDocumentName());
+
         } catch (Exception e) {
+            logger.error("Failed to download timesheet", e);
             throw new RuntimeException("Failed to download timesheet: " + e.getMessage(), e);
         }
     }
 
     private void login(String username, String password) {
         driver.get("https://ui.boondmanager.com/login");
-        driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
+        logger.info("Waiting for login page to load...");
 
-        WebElement usernameField = driver.findElement(By.name("username"));
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+
+        WebElement usernameField = wait.until(ExpectedConditions.presenceOfElementLocated(By.name("username")));
         WebElement passwordField = driver.findElement(By.name("password"));
         WebElement loginButton = driver.findElement(By.cssSelector("button[type='submit']"));
 
@@ -41,22 +53,37 @@ public class BoondScraperService {
         passwordField.sendKeys(password);
         loginButton.click();
 
+        logger.info("Login credentials submitted");
+
         // Wait for login to complete
-        new WebDriverWait(driver, Duration.ofSeconds(10))
-                .until(ExpectedConditions.urlContains("dashboard"));
+        wait.until(ExpectedConditions.urlContains("dashboard"));
+        logger.info("Login successful");
     }
 
     private void navigateToTimesheet(String timesheetId) {
-        driver.get("https://ui.boondmanager.com/times-reports/" + timesheetId);
-        driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
+        String url = "https://ui.boondmanager.com/times-reports/" + timesheetId;
+        logger.info("Navigating to: {}", url);
+        driver.get(url);
+
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.tagName("body")));
     }
 
     private File downloadDocument(String documentName) throws Exception {
-        WebElement document = driver.findElement(By.xpath("//a[contains(text(), '" + documentName + "')]"));
+        logger.info("Looking for document: {}", documentName);
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        WebElement document = wait.until(
+                ExpectedConditions.presenceOfElementLocated(
+                        By.xpath("//a[contains(text(), '" + documentName + "')]")
+                )
+        );
+
         String href = document.getAttribute("href");
+        logger.info("Document link found: {}", href);
 
         // Create a temporary file
         Path tempFile = Files.createTempFile("timesheet", getFileExtension(documentName));
+        logger.info("Created temporary file: {}", tempFile);
 
         // Download the file using Selenium
         driver.get(href);

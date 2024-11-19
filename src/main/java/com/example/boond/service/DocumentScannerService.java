@@ -1,6 +1,6 @@
-package org.example.boond.service;
+package com.example.boond.service;
 
-import org.example.boond.model.ScanResult;
+import com.example.boond.model.ScanResult;
 import net.sourceforge.tess4j.Tesseract;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.rendering.PDFRenderer;

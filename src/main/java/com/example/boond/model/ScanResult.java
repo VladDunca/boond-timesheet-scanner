@@ -1,4 +1,4 @@
-package org.example.boond.model;
+package com.example.boond.model;
 
 import lombok.Data;
 import java.util.List;
